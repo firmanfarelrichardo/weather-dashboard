@@ -4,14 +4,11 @@ Dashboard cuaca modern dan responsif yang menampilkan informasi cuaca real-time 
 
 ## Screenshot
 
-### Tampilan Utama
 ![Dashboard Cuaca](screenshot/1.png)
 
-### Mode Gelap
-![Mode Gelap](screenshot/2.png)
+![Tampilan Fleksibel](screenshot/2.png)
 
-### Pencarian Kota
-![Pencarian Kota](screenshot/3.png)
+![Pencarian Kota dan Status Fahrenheit](screenshot/3.png)
 
 ## Fitur
 

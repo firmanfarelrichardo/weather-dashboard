@@ -1,9 +1,3 @@
-/**
- * API Service Layer for Weather Dashboard
- * Handles all API calls to OpenWeatherMap API
- * Pure logic - no DOM manipulation
- */
-
 import { 
     API_KEY, 
     ENDPOINTS, 
@@ -12,43 +6,27 @@ import {
     HTTP_STATUS 
 } from './config.js';
 
-/**
- * Fetches complete weather data for a given city
- * First gets coordinates via Geocoding API, then fetches weather data
- * 
- * @param {string} city - The name of the city to fetch weather for
- * @param {string} unit - Temperature unit ('metric' or 'imperial')
- * @returns {Promise<Object>} Object containing current weather and forecast data
- * @throws {Error} When API request fails or city is not found
- */
-export async function fetchWeatherData(city, unit = DEFAULT_SETTINGS.unit) {
+export async function fetchWeatherData(city, unit = DEFAULT_SETTINGS.unit, lang = DEFAULT_SETTINGS.language) {
     try {
-        // First, get coordinates for the city using Geocoding API
         const geoData = await fetchCityCoordinates(city);
         
         if (!geoData || geoData.length === 0) {
+            console.error(`City "${city}" not found in geocoding API`);
             throw new Error(ERROR_MESSAGES.CITY_NOT_FOUND);
         }
         
-        const { lat, lon } = geoData[0];
+        const { lat, lon, name, country } = geoData[0];
+        console.log(`✓ Found: ${name}, ${country} (${lat}, ${lon})`);
         
-        // Fetch weather data using coordinates
-        return await fetchWeatherByCoordinates(lat, lon, unit);
+        return await fetchWeatherByCoordinates(lat, lon, unit, lang);
     } catch (error) {
         console.error('Error fetching weather data:', error);
         throw error;
     }
 }
 
-/**
- * Fetches coordinates for a city using Geocoding API
- * 
- * @param {string} city - The name of the city
- * @returns {Promise<Array>} Array of location data with coordinates
- * @throws {Error} When API request fails
- */
 async function fetchCityCoordinates(city) {
-    const url = `${ENDPOINTS.GEOCODING}?q=${encodeURIComponent(city)}&limit=1&appid=${API_KEY}`;
+    const url = `${ENDPOINTS.GEOCODING}?q=${encodeURIComponent(city)}&limit=5&appid=${API_KEY}`;
     
     try {
         const response = await fetch(url);
@@ -58,6 +36,12 @@ async function fetchCityCoordinates(city) {
         }
         
         const data = await response.json();
+        
+        if (!data || data.length === 0) {
+            console.warn(`No exact match found for "${city}"`);
+            return [];
+        }
+        
         return data;
     } catch (error) {
         console.error('Error fetching city coordinates:', error);
@@ -65,17 +49,8 @@ async function fetchCityCoordinates(city) {
     }
 }
 
-/**
- * Fetches current weather data using coordinates
- * 
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @param {string} unit - Temperature unit ('metric' or 'imperial')
- * @returns {Promise<Object>} Current weather data
- * @throws {Error} When API request fails
- */
-async function fetchCurrentWeather(lat, lon, unit = DEFAULT_SETTINGS.unit) {
-    const url = `${ENDPOINTS.CURRENT_WEATHER}?lat=${lat}&lon=${lon}&units=${unit}&appid=${API_KEY}`;
+async function fetchCurrentWeather(lat, lon, unit = DEFAULT_SETTINGS.unit, lang = DEFAULT_SETTINGS.language) {
+    const url = `${ENDPOINTS.CURRENT_WEATHER}?lat=${lat}&lon=${lon}&units=${unit}&lang=${lang}&appid=${API_KEY}`;
     
     try {
         const response = await fetch(url);
@@ -92,18 +67,8 @@ async function fetchCurrentWeather(lat, lon, unit = DEFAULT_SETTINGS.unit) {
     }
 }
 
-/**
- * Fetches 5-day weather forecast using coordinates
- * Returns forecast data in 3-hour intervals
- * 
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @param {string} unit - Temperature unit ('metric' or 'imperial')
- * @returns {Promise<Object>} 5-day forecast data
- * @throws {Error} When API request fails
- */
-async function fetchForecast(lat, lon, unit = DEFAULT_SETTINGS.unit) {
-    const url = `${ENDPOINTS.FORECAST}?lat=${lat}&lon=${lon}&units=${unit}&appid=${API_KEY}`;
+async function fetchForecast(lat, lon, unit = DEFAULT_SETTINGS.unit, lang = DEFAULT_SETTINGS.language) {
+    const url = `${ENDPOINTS.FORECAST}?lat=${lat}&lon=${lon}&units=${unit}&lang=${lang}&appid=${API_KEY}`;
     
     try {
         const response = await fetch(url);
@@ -120,15 +85,6 @@ async function fetchForecast(lat, lon, unit = DEFAULT_SETTINGS.unit) {
     }
 }
 
-/**
- * Fetches city suggestions for autocomplete feature
- * Uses OpenWeatherMap Geocoding API
- * 
- * @param {string} query - The search query (city name)
- * @param {number} limit - Maximum number of suggestions to return (default: 5)
- * @returns {Promise<Array>} Array of city suggestions
- * @throws {Error} When API request fails
- */
 export async function fetchCitySuggestions(query, limit = 5) {
     if (!query || query.trim().length < 2) {
         return [];
@@ -145,7 +101,6 @@ export async function fetchCitySuggestions(query, limit = 5) {
         
         const data = await response.json();
         
-        // Transform data to a more usable format
         return data.map(location => ({
             name: location.name,
             country: location.country,
@@ -156,25 +111,15 @@ export async function fetchCitySuggestions(query, limit = 5) {
         }));
     } catch (error) {
         console.error('Error fetching city suggestions:', error);
-        // Return empty array instead of throwing to prevent breaking autocomplete
         return [];
     }
-/**
- * Fetches weather data using geographic coordinates
- * Useful for geolocation-based weather
- * 
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- * @param {string} unit - Temperature unit ('metric' or 'imperial')
- * @returns {Promise<Object>} Object containing current weather and forecast data
- * @throws {Error} When API request fails
- */
-export async function fetchWeatherByCoordinates(lat, lon, unit = DEFAULT_SETTINGS.unit) {
+}
+
+export async function fetchWeatherByCoordinates(lat, lon, unit = DEFAULT_SETTINGS.unit, lang = DEFAULT_SETTINGS.language) {
     try {
-        // Fetch both current weather and forecast in parallel using coordinates
         const [currentWeather, forecast] = await Promise.all([
-            fetchCurrentWeather(lat, lon, unit),
-            fetchForecast(lat, lon, unit)
+            fetchCurrentWeather(lat, lon, unit, lang),
+            fetchForecast(lat, lon, unit, lang)
         ]);
 
         return {
@@ -188,16 +133,12 @@ export async function fetchWeatherByCoordinates(lat, lon, unit = DEFAULT_SETTING
         console.error('Error fetching weather by coordinates:', error);
         throw error;
     }
-}       throw error;
-    }
 }
 
-/**
- * Handles API errors and returns appropriate error messages
- * 
- * @param {Response} response - The fetch response object
- * @returns {Promise<Error>} Error object with appropriate message
- */
+export async function searchCity(query, limit = 5) {
+    return await fetchCitySuggestions(query, limit);
+}
+
 async function handleAPIError(response) {
     let errorMessage;
 
@@ -221,24 +162,17 @@ async function handleAPIError(response) {
             errorMessage = ERROR_MESSAGES.API_ERROR;
     }
 
-    // Try to get more specific error from response
     try {
         const errorData = await response.json();
         if (errorData.message) {
             errorMessage = errorData.message;
         }
     } catch (e) {
-        // Use default error message if parsing fails
     }
 
     return new Error(errorMessage);
 }
 
-/**
- * Validates if the API key is configured
- * 
- * @returns {boolean} True if API key is set, false otherwise
- */
 export function isAPIKeyConfigured() {
     return API_KEY && API_KEY !== 'YOUR_API_KEY_HERE';
 }

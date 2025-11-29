@@ -1,34 +1,23 @@
-/**
- * Configuration file for Weather Dashboard Application
- * Contains API credentials, endpoints, and default settings
- */
-
-// OpenWeatherMap API Configuration
 export const API_KEY = 'ffe83d710eb450d9c471aa554dccbf1d';
 export const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 export const GEO_URL = 'https://api.openweathermap.org/geo/1.0';
 
-// API Endpoints
 export const ENDPOINTS = {
     CURRENT_WEATHER: `${BASE_URL}/weather`,
     FORECAST: `${BASE_URL}/forecast`,
     GEOCODING: `${GEO_URL}/direct`,
 };
 
-// Default Application Settings
 export const DEFAULT_SETTINGS = {
-    city: 'Jakarta',
-    country: 'ID',
-    unit: 'metric', // 'metric' for Celsius, 'imperial' for Fahrenheit
-    language: 'en',
+    unit: 'metric',
+    language: 'id',
     maxHistoryItems: 5,
 };
 
-// Unit Symbols
 export const UNIT_SYMBOLS = {
     metric: {
         temperature: '°C',
-        speed: 'km/h',
+        speed: 'km/j',
         pressure: 'hPa',
         visibility: 'km',
     },
@@ -36,27 +25,24 @@ export const UNIT_SYMBOLS = {
         temperature: '°F',
         speed: 'mph',
         pressure: 'hPa',
-        visibility: 'mi',
+        visibility: 'mil',
     },
 };
 
-// Local Storage Keys
 export const STORAGE_KEYS = {
     SEARCH_HISTORY: 'weather_search_history',
     PREFERRED_UNIT: 'weather_preferred_unit',
     THEME: 'weather_theme',
 };
 
-// Error Messages
 export const ERROR_MESSAGES = {
-    NETWORK_ERROR: 'Unable to connect to the weather service. Please check your internet connection.',
-    CITY_NOT_FOUND: 'City not found. Please check the spelling and try again.',
-    API_ERROR: 'An error occurred while fetching weather data. Please try again later.',
-    INVALID_API_KEY: 'Invalid API key. Please check your configuration.',
-    RATE_LIMIT: 'Too many requests. Please wait a moment and try again.',
+    NETWORK_ERROR: 'Tidak dapat terhubung ke layanan cuaca. Periksa koneksi internet Anda.',
+    CITY_NOT_FOUND: 'Kota tidak ditemukan. Coba gunakan nama kota yang lebih umum atau lengkap (contoh: Jakarta, Indonesia).',
+    API_ERROR: 'Terjadi kesalahan saat mengambil data cuaca. Silakan coba lagi nanti.',
+    INVALID_API_KEY: 'Kunci API tidak valid. Periksa konfigurasi Anda.',
+    RATE_LIMIT: 'Terlalu banyak permintaan. Tunggu sebentar dan coba lagi.',
 };
 
-// API Response Codes
 export const HTTP_STATUS = {
     OK: 200,
     BAD_REQUEST: 400,

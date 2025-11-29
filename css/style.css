@@ -1,0 +1,93 @@
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #1e293b;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+.forecast-card {
+    opacity: 0;
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
+.forecast-card:nth-child(1) { animation-delay: 0.1s; }
+.forecast-card:nth-child(2) { animation-delay: 0.2s; }
+.forecast-card:nth-child(3) { animation-delay: 0.3s; }
+.forecast-card:nth-child(4) { animation-delay: 0.4s; }
+.forecast-card:nth-child(5) { animation-delay: 0.5s; }
+
+@keyframes pulse-subtle {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.weather-icon-active {
+    animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        #1e293b 0%,
+        #334155 50%,
+        #1e293b 100%
+    );
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+* {
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:focus-visible,
+input:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+.glass-effect {
+    background: rgba(30, 41, 59, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}

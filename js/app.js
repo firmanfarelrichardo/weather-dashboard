@@ -4,7 +4,7 @@
  * Handles initialization, event listeners, and state management
  */
 
-import { fetchWeatherData, isAPIKeyConfigured } from './api.js';
+import { fetchWeatherData, fetchCitySuggestions, isAPIKeyConfigured } from './api.js';
 import { 
     renderCurrentWeather, 
     renderForecast, 
@@ -12,18 +12,26 @@ import {
     hideLoading,
     showError,
     renderRecentLocations,
+    renderAutocomplete,
     clearSearchInput,
     getSearchInputValue,
     getElements,
     refreshIcons,
     updateUnitToggle
 } from './dom.js';
-import { DEFAULT_SETTINGS, STORAGE_KEYS } from './config.js';
+import { DEFAULT_SETTINGS } from './config.js';
 import { debounce, isLocalStorageAvailable } from './utils.js';
+import { 
+    saveToHistory, 
+    getHistory, 
+    removeFromHistoryByIndex,
+    savePreferredUnit,
+    getPreferredUnit 
+} from './storage.js';
 
 // Application State
 let currentUnit = DEFAULT_SETTINGS.unit;
-let searchHistory = [];
+let currentCity = '';
 
 /**
  * Initialize the application
@@ -99,8 +107,12 @@ async function loadWeather(city) {
         // Render forecast
         renderForecast(weatherData.forecast.list, currentUnit);
         
-        // Add to search history
-        addToSearchHistory(`${weatherData.city}, ${weatherData.country}`);
+        // Save current city
+        currentCity = `${weatherData.city}, ${weatherData.country}`;
+        
+        // Add to search history using storage module
+        const updatedHistory = saveToHistory(currentCity);
+        renderHistoryList(updatedHistory);
         
         // Clear search input
         clearSearchInput();
@@ -133,6 +145,10 @@ function setupEventListeners() {
                 handleSearch();
             }
         });
+        
+        // Autocomplete with debounce (500ms delay)
+        const debouncedAutocomplete = debounce(handleAutocomplete, 500);
+        elements.searchInput.addEventListener('input', debouncedAutocomplete);
     }
     
     // Unit toggle button
@@ -159,21 +175,60 @@ function handleSearch() {
 }
 
 /**
+ * Handle autocomplete - fetches city suggestions as user types
+ */
+async function handleAutocomplete() {
+    const query = getSearchInputValue();
+    
+    // Only trigger autocomplete if query is at least 2 characters
+    if (!query || query.length < 2) {
+        if (renderAutocomplete) {
+            renderAutocomplete([]);
+        }
+        return;
+    }
+    
+    try {
+        const suggestions = await fetchCitySuggestions(query, 5);
+        
+        // Render autocomplete suggestions if function exists
+        if (renderAutocomplete) {
+            renderAutocomplete(suggestions, handleSuggestionClick);
+        }
+    } catch (error) {
+        console.error('Error fetching suggestions:', error);
+    }
+}
+
+/**
+ * Handle autocomplete suggestion click
+ * 
+ * @param {Object} suggestion - Suggestion object with city data
+ */
+function handleSuggestionClick(suggestion) {
+    if (suggestion && suggestion.name) {
+        loadWeather(suggestion.name);
+    }
+}
+
+/**
  * Handle unit toggle (Celsius/Fahrenheit)
  */
 async function handleUnitToggle() {
     // Toggle between metric and imperial
     currentUnit = currentUnit === 'metric' ? 'imperial' : 'metric';
     
-    // Save preference
-    saveUnitPreference(currentUnit);
+    // Save preference using storage module
+    savePreferredUnit(currentUnit);
     
     // Update UI
     updateUnitToggle(currentUnit);
     
-    // Reload current weather with new unit
-    const city = getSearchInputValue() || DEFAULT_SETTINGS.city;
-    await loadWeather(city);
+    // Reload current weather with new unit if we have a current city
+    if (currentCity) {
+        const cityName = currentCity.split(',')[0].trim();
+        await loadWeather(cityName);
+    }
     
     console.log('✓ Unit toggled to:', currentUnit);
 }
@@ -187,28 +242,13 @@ function handleThemeToggle() {
 }
 
 /**
- * Add city to search history
+ * Render history list in the sidebar
  * 
- * @param {string} location - Location string (e.g., "Jakarta, ID")
+ * @param {Array} history - Array of city names
  */
-function addToSearchHistory(location) {
-    // Remove if already exists (to move it to top)
-    searchHistory = searchHistory.filter(item => item !== location);
-    
-    // Add to beginning of array
-    searchHistory.unshift(location);
-    
-    // Limit to max items
-    if (searchHistory.length > DEFAULT_SETTINGS.maxHistoryItems) {
-        searchHistory = searchHistory.slice(0, DEFAULT_SETTINGS.maxHistoryItems);
-    }
-    
-    // Save to localStorage
-    saveSearchHistory();
-    
-    // Update UI
+function renderHistoryList(history) {
     renderRecentLocations(
-        searchHistory,
+        history,
         handleLocationClick,
         handleLocationRemove
     );
@@ -231,13 +271,8 @@ function handleLocationClick(location) {
  * @param {number} index - Index of location to remove
  */
 function handleLocationRemove(index) {
-    searchHistory.splice(index, 1);
-    saveSearchHistory();
-    renderRecentLocations(
-        searchHistory,
-        handleLocationClick,
-        handleLocationRemove
-    );
+    const updatedHistory = removeFromHistoryByIndex(index);
+    renderHistoryList(updatedHistory);
 }
 
 /**
@@ -250,23 +285,13 @@ function loadUserPreferences() {
     }
     
     try {
-        // Load preferred unit
-        const savedUnit = localStorage.getItem(STORAGE_KEYS.PREFERRED_UNIT);
-        if (savedUnit && (savedUnit === 'metric' || savedUnit === 'imperial')) {
-            currentUnit = savedUnit;
-            updateUnitToggle(currentUnit);
-        }
+        // Load preferred unit using storage module
+        currentUnit = getPreferredUnit();
+        updateUnitToggle(currentUnit);
         
-        // Load search history
-        const savedHistory = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
-        if (savedHistory) {
-            searchHistory = JSON.parse(savedHistory);
-            renderRecentLocations(
-                searchHistory,
-                handleLocationClick,
-                handleLocationRemove
-            );
-        }
+        // Load and render search history
+        const history = getHistory();
+        renderHistoryList(history);
         
         console.log('✓ User preferences loaded');
     } catch (error) {
@@ -274,36 +299,8 @@ function loadUserPreferences() {
     }
 }
 
-/**
- * Save unit preference to localStorage
- * 
- * @param {string} unit - Unit to save ('metric' or 'imperial')
- */
-function saveUnitPreference(unit) {
-    if (!isLocalStorageAvailable()) return;
-    
-    try {
-        localStorage.setItem(STORAGE_KEYS.PREFERRED_UNIT, unit);
-    } catch (error) {
-        console.error('Error saving unit preference:', error);
-    }
-}
-
-/**
- * Save search history to localStorage
- */
-function saveSearchHistory() {
-    if (!isLocalStorageAvailable()) return;
-    
-    try {
-        localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(searchHistory));
-    } catch (error) {
-        console.error('Error saving search history:', error);
-    }
-}
-
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
 
 // Export for testing purposes
-export { init, loadWeather, handleSearch, handleUnitToggle };
+export { init, loadWeather, handleSearch, handleUnitToggle, handleAutocomplete };

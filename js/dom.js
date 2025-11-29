@@ -44,6 +44,9 @@ const elements = {
     themeToggleBtn: document.getElementById('theme-toggle-btn'),
 };
 
+// Autocomplete container (will be created dynamically)
+let autocompleteContainer = null;
+
 /**
  * Renders current weather data to the main weather card
  * 
@@ -267,6 +270,87 @@ export function renderRecentLocations(locations, onLocationClick, onLocationRemo
     });
     
     refreshIcons();
+}
+
+/**
+ * Renders autocomplete suggestions dropdown
+ * 
+ * @param {Array} suggestions - Array of city suggestion objects
+ * @param {Function} onSuggestionClick - Callback when suggestion is clicked
+ */
+export function renderAutocomplete(suggestions, onSuggestionClick) {
+    // Remove existing autocomplete container
+    if (autocompleteContainer) {
+        autocompleteContainer.remove();
+        autocompleteContainer = null;
+    }
+    
+    // Don't render if no suggestions
+    if (!suggestions || suggestions.length === 0) {
+        return;
+    }
+    
+    if (!elements.searchInput) return;
+    
+    // Create autocomplete container
+    autocompleteContainer = document.createElement('div');
+    autocompleteContainer.className = 'absolute top-full left-0 right-0 mt-1 bg-white border border-slate-300 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto';
+    
+    // Add suggestions
+    suggestions.forEach(suggestion => {
+        const item = document.createElement('div');
+        item.className = 'px-4 py-3 hover:bg-slate-50 cursor-pointer transition-colors duration-150 flex items-center space-x-2 border-b border-slate-100 last:border-b-0';
+        
+        item.innerHTML = `
+            <i data-lucide="map-pin" class="w-4 h-4 text-slate-400 flex-shrink-0"></i>
+            <div class="flex-1">
+                <div class="text-slate-800 font-medium">${suggestion.name}</div>
+                <div class="text-xs text-slate-500">${suggestion.state ? suggestion.state + ', ' : ''}${suggestion.country}</div>
+            </div>
+        `;
+        
+        // Add click handler
+        item.addEventListener('click', () => {
+            if (onSuggestionClick) {
+                onSuggestionClick(suggestion);
+            }
+            // Remove autocomplete after selection
+            if (autocompleteContainer) {
+                autocompleteContainer.remove();
+                autocompleteContainer = null;
+            }
+        });
+        
+        autocompleteContainer.appendChild(item);
+    });
+    
+    // Position relative to search input
+    const searchWrapper = elements.searchInput.parentElement;
+    if (searchWrapper) {
+        searchWrapper.style.position = 'relative';
+        searchWrapper.appendChild(autocompleteContainer);
+    }
+    
+    // Refresh icons
+    refreshIcons();
+    
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', handleClickOutside);
+}
+
+/**
+ * Handle clicks outside autocomplete to close it
+ * 
+ * @param {Event} event - Click event
+ */
+function handleClickOutside(event) {
+    if (autocompleteContainer && 
+        !autocompleteContainer.contains(event.target) && 
+        event.target !== elements.searchInput) {
+        autocompleteContainer.remove();
+        autocompleteContainer = null;
+        document.removeEventListener('click', handleClickOutside);
+    }
 }
 
 /**

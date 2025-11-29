@@ -1,9 +1,3 @@
-/**
- * Main Application Controller for Weather Dashboard
- * Coordinates between API layer and View layer
- * Handles initialization, event listeners, and state management
- */
-
 import { fetchWeatherData, fetchCitySuggestions, isAPIKeyConfigured } from './api.js';
 import { 
     renderCurrentWeather, 
@@ -26,44 +20,47 @@ import {
     getHistory, 
     removeFromHistoryByIndex,
     savePreferredUnit,
-    getPreferredUnit 
+    getPreferredUnit,
+    saveThemePreference,
+    getThemePreference
 } from './storage.js';
 
-// Application State
 let currentUnit = DEFAULT_SETTINGS.unit;
 let currentCity = '';
+let currentWeatherData = null;
 
-/**
- * Initialize the application
- */
 async function init() {
     console.log('🌤️ Weather Dashboard - Initializing...');
     
-    // Initialize Lucide icons
+    initializeTheme();
+    
     initializeLucideIcons();
     
-    // Load user preferences
     loadUserPreferences();
     
-    // Setup event listeners
     setupEventListeners();
     
-    // Check API key configuration
     if (!isAPIKeyConfigured()) {
         showError('API Key not configured. Please add your OpenWeatherMap API key in config.js');
         console.error('❌ API Key not configured');
         return;
     }
     
-    // Load default city weather on startup
-    await loadDefaultWeather();
-    
     console.log('✅ Weather Dashboard - Ready!');
+    console.log('💡 Cari kota untuk melihat data cuaca');
 }
 
-/**
- * Initialize Lucide icons
- */
+function initializeTheme() {
+    const savedTheme = getThemePreference();
+    
+    if (!savedTheme || savedTheme === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark ? 'dark' : 'light');
+    } else {
+        applyTheme(savedTheme);
+    }
+}
+
 function initializeLucideIcons() {
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
@@ -73,26 +70,9 @@ function initializeLucideIcons() {
     }
 }
 
-/**
- * Load weather for default city
- */
-async function loadDefaultWeather() {
-    try {
-        await loadWeather(DEFAULT_SETTINGS.city);
-    } catch (error) {
-        console.error('Failed to load default weather:', error);
-        showError(error.message);
-    }
-}
-
-/**
- * Load weather data for a specific city
- * 
- * @param {string} city - City name to fetch weather for
- */
 async function loadWeather(city) {
     if (!city || city.trim() === '') {
-        showError('Please enter a city name');
+        showError('Masukkan nama kota');
         return;
     }
     
@@ -101,20 +81,17 @@ async function loadWeather(city) {
         
         const weatherData = await fetchWeatherData(city, currentUnit);
         
-        // Render current weather
+        currentWeatherData = weatherData;
+        
         renderCurrentWeather(weatherData.current, currentUnit);
         
-        // Render forecast
         renderForecast(weatherData.forecast.list, currentUnit);
         
-        // Save current city
         currentCity = `${weatherData.city}, ${weatherData.country}`;
         
-        // Add to search history using storage module
         const updatedHistory = saveToHistory(currentCity);
         renderHistoryList(updatedHistory);
         
-        // Clear search input
         clearSearchInput();
         
         hideLoading();
@@ -127,18 +104,13 @@ async function loadWeather(city) {
     }
 }
 
-/**
- * Setup all event listeners
- */
 function setupEventListeners() {
     const elements = getElements();
     
-    // Search button click
     if (elements.searchBtn) {
         elements.searchBtn.addEventListener('click', handleSearch);
     }
     
-    // Search input - Enter key
     if (elements.searchInput) {
         elements.searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -146,17 +118,18 @@ function setupEventListeners() {
             }
         });
         
-        // Autocomplete with debounce (500ms delay)
         const debouncedAutocomplete = debounce(handleAutocomplete, 500);
         elements.searchInput.addEventListener('input', debouncedAutocomplete);
     }
     
-    // Unit toggle button
+    if (elements.refreshBtn) {
+        elements.refreshBtn.addEventListener('click', handleRefresh);
+    }
+    
     if (elements.unitToggleBtn) {
         elements.unitToggleBtn.addEventListener('click', handleUnitToggle);
     }
     
-    // Theme toggle button (placeholder for future implementation)
     if (elements.themeToggleBtn) {
         elements.themeToggleBtn.addEventListener('click', handleThemeToggle);
     }
@@ -164,9 +137,6 @@ function setupEventListeners() {
     console.log('✓ Event listeners configured');
 }
 
-/**
- * Handle search button click
- */
 function handleSearch() {
     const city = getSearchInputValue();
     if (city) {
@@ -174,13 +144,9 @@ function handleSearch() {
     }
 }
 
-/**
- * Handle autocomplete - fetches city suggestions as user types
- */
 async function handleAutocomplete() {
     const query = getSearchInputValue();
     
-    // Only trigger autocomplete if query is at least 2 characters
     if (!query || query.length < 2) {
         if (renderAutocomplete) {
             renderAutocomplete([]);
@@ -191,7 +157,6 @@ async function handleAutocomplete() {
     try {
         const suggestions = await fetchCitySuggestions(query, 5);
         
-        // Render autocomplete suggestions if function exists
         if (renderAutocomplete) {
             renderAutocomplete(suggestions, handleSuggestionClick);
         }
@@ -200,52 +165,107 @@ async function handleAutocomplete() {
     }
 }
 
-/**
- * Handle autocomplete suggestion click
- * 
- * @param {Object} suggestion - Suggestion object with city data
- */
 function handleSuggestionClick(suggestion) {
     if (suggestion && suggestion.name) {
         loadWeather(suggestion.name);
     }
 }
 
-/**
- * Handle unit toggle (Celsius/Fahrenheit)
- */
 async function handleUnitToggle() {
-    // Toggle between metric and imperial
-    currentUnit = currentUnit === 'metric' ? 'imperial' : 'metric';
+    const newUnit = currentUnit === 'metric' ? 'imperial' : 'metric';
     
-    // Save preference using storage module
-    savePreferredUnit(currentUnit);
-    
-    // Update UI
-    updateUnitToggle(currentUnit);
-    
-    // Reload current weather with new unit if we have a current city
-    if (currentCity) {
-        const cityName = currentCity.split(',')[0].trim();
-        await loadWeather(cityName);
+    if (!currentCity) {
+        currentUnit = newUnit;
+        savePreferredUnit(currentUnit);
+        updateUnitToggle(currentUnit);
+        return;
     }
     
-    console.log('✓ Unit toggled to:', currentUnit);
+    try {
+        showLoading();
+        
+        currentUnit = newUnit;
+        savePreferredUnit(currentUnit);
+        updateUnitToggle(currentUnit);
+        
+        const cityName = currentCity.split(',')[0].trim();
+        await loadWeather(cityName);
+        
+        console.log('✓ Unit toggled to:', currentUnit);
+    } catch (error) {
+        console.error('Error toggling unit:', error);
+        currentUnit = currentUnit === 'metric' ? 'imperial' : 'metric';
+        updateUnitToggle(currentUnit);
+        hideLoading();
+    }
 }
 
-/**
- * Handle theme toggle (placeholder)
- */
+async function handleRefresh() {
+    if (!currentCity) {
+        showError('No city to refresh. Please search for a city first.');
+        return;
+    }
+    
+    const elements = getElements();
+    
+    if (elements.refreshBtn) {
+        const icon = elements.refreshBtn.querySelector('[data-lucide="refresh-cw"]');
+        if (icon) {
+            icon.classList.add('animate-spin');
+        }
+    }
+    
+    const cityName = currentCity.split(',')[0].trim();
+    await loadWeather(cityName);
+    
+    if (elements.refreshBtn) {
+        const icon = elements.refreshBtn.querySelector('[data-lucide="refresh-cw"]');
+        if (icon) {
+            icon.classList.remove('animate-spin');
+        }
+    }
+    
+    console.log('✅ Weather data refreshed');
+}
+
 function handleThemeToggle() {
-    console.log('Theme toggle - To be implemented');
-    // TODO: Implement dark/light theme toggle
+    const html = document.documentElement;
+    const isDark = html.classList.contains('dark');
+    const newTheme = isDark ? 'light' : 'dark';
+    
+    applyTheme(newTheme);
+    saveThemePreference(newTheme);
+    
+    console.log('✅ Theme toggled to:', newTheme);
 }
 
-/**
- * Render history list in the sidebar
- * 
- * @param {Array} history - Array of city names
- */
+function applyTheme(theme) {
+    const html = document.documentElement;
+    const elements = getElements();
+    
+    if (theme === 'dark') {
+        html.classList.add('dark');
+        
+        if (elements.themeToggleBtn) {
+            const icon = elements.themeToggleBtn.querySelector('[data-lucide]');
+            if (icon) {
+                icon.setAttribute('data-lucide', 'sun');
+                refreshIcons();
+            }
+        }
+    } else {
+        html.classList.remove('dark');
+        
+        if (elements.themeToggleBtn) {
+            const icon = elements.themeToggleBtn.querySelector('[data-lucide]');
+            if (icon) {
+                icon.setAttribute('data-lucide', 'moon');
+                refreshIcons();
+            }
+        }
+    }
+}
+
 function renderHistoryList(history) {
     renderRecentLocations(
         history,
@@ -254,30 +274,16 @@ function renderHistoryList(history) {
     );
 }
 
-/**
- * Handle recent location click
- * 
- * @param {string} location - Location string
- */
 function handleLocationClick(location) {
-    // Extract city name (before comma)
     const city = location.split(',')[0].trim();
     loadWeather(city);
 }
 
-/**
- * Handle remove location from history
- * 
- * @param {number} index - Index of location to remove
- */
 function handleLocationRemove(index) {
     const updatedHistory = removeFromHistoryByIndex(index);
     renderHistoryList(updatedHistory);
 }
 
-/**
- * Load user preferences from localStorage
- */
 function loadUserPreferences() {
     if (!isLocalStorageAvailable()) {
         console.warn('localStorage not available');
@@ -285,11 +291,9 @@ function loadUserPreferences() {
     }
     
     try {
-        // Load preferred unit using storage module
         currentUnit = getPreferredUnit();
         updateUnitToggle(currentUnit);
         
-        // Load and render search history
         const history = getHistory();
         renderHistoryList(history);
         
@@ -299,8 +303,6 @@ function loadUserPreferences() {
     }
 }
 
-// Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', init);
 
-// Export for testing purposes
-export { init, loadWeather, handleSearch, handleUnitToggle, handleAutocomplete };
+export { init, loadWeather, handleSearch, handleUnitToggle, handleAutocomplete, handleRefresh, handleThemeToggle };

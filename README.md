@@ -106,14 +106,6 @@ weather-dashboard/
 - **5-Day Forecast**: `/data/2.5/forecast`
 - **Geocoding**: `/geo/1.0/direct`
 
-## Lisensi
-
-Proyek ini dibuat untuk keperluan pembelajaran.
-
 ## Author
 
 **Firman Farel Ricardo**
-
----
-
-Jika Anda menyukai proyek ini, berikan star di repository!

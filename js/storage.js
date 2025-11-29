@@ -1,17 +1,5 @@
-/**
- * LocalStorage Management Module
- * Handles all localStorage operations for search history and user preferences
- */
-
 import { STORAGE_KEYS, DEFAULT_SETTINGS } from './config.js';
 
-/**
- * Saves a city to search history
- * Ensures uniqueness and maintains order (most recent first)
- * 
- * @param {string} city - City name with country (e.g., "Jakarta, ID")
- * @returns {Array} Updated history array
- */
 export function saveToHistory(city) {
     if (!city || typeof city !== 'string') {
         console.error('Invalid city name');
@@ -21,18 +9,14 @@ export function saveToHistory(city) {
     try {
         let history = getHistory();
         
-        // Remove if already exists (to move it to top)
         history = history.filter(item => item.toLowerCase() !== city.toLowerCase());
         
-        // Add to beginning of array
         history.unshift(city);
         
-        // Limit to max items
         if (history.length > DEFAULT_SETTINGS.maxHistoryItems) {
             history = history.slice(0, DEFAULT_SETTINGS.maxHistoryItems);
         }
         
-        // Save to localStorage
         localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(history));
         
         console.log('✓ City saved to history:', city);
@@ -43,11 +27,6 @@ export function saveToHistory(city) {
     }
 }
 
-/**
- * Gets the search history from localStorage
- * 
- * @returns {Array} Array of city names
- */
 export function getHistory() {
     try {
         const stored = localStorage.getItem(STORAGE_KEYS.SEARCH_HISTORY);
@@ -58,7 +37,6 @@ export function getHistory() {
         
         const history = JSON.parse(stored);
         
-        // Validate that it's an array
         if (!Array.isArray(history)) {
             console.warn('Invalid history format, resetting');
             localStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
@@ -72,12 +50,6 @@ export function getHistory() {
     }
 }
 
-/**
- * Removes a city from search history
- * 
- * @param {string} city - City name to remove
- * @returns {Array} Updated history array
- */
 export function removeFromHistory(city) {
     if (!city) {
         console.error('No city specified for removal');
@@ -87,10 +59,8 @@ export function removeFromHistory(city) {
     try {
         let history = getHistory();
         
-        // Filter out the city (case-insensitive)
         history = history.filter(item => item.toLowerCase() !== city.toLowerCase());
         
-        // Save updated history
         localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(history));
         
         console.log('✓ City removed from history:', city);
@@ -101,12 +71,6 @@ export function removeFromHistory(city) {
     }
 }
 
-/**
- * Removes a city from history by index
- * 
- * @param {number} index - Index of city to remove
- * @returns {Array} Updated history array
- */
 export function removeFromHistoryByIndex(index) {
     try {
         let history = getHistory();
@@ -116,10 +80,8 @@ export function removeFromHistoryByIndex(index) {
             return history;
         }
         
-        // Remove item at index
         history.splice(index, 1);
         
-        // Save updated history
         localStorage.setItem(STORAGE_KEYS.SEARCH_HISTORY, JSON.stringify(history));
         
         console.log('✓ Item removed from history at index:', index);
@@ -130,11 +92,6 @@ export function removeFromHistoryByIndex(index) {
     }
 }
 
-/**
- * Clears all search history
- * 
- * @returns {Array} Empty array
- */
 export function clearHistory() {
     try {
         localStorage.removeItem(STORAGE_KEYS.SEARCH_HISTORY);
@@ -146,11 +103,6 @@ export function clearHistory() {
     }
 }
 
-/**
- * Saves user's preferred temperature unit
- * 
- * @param {string} unit - 'metric' or 'imperial'
- */
 export function savePreferredUnit(unit) {
     if (unit !== 'metric' && unit !== 'imperial') {
         console.error('Invalid unit:', unit);
@@ -165,11 +117,6 @@ export function savePreferredUnit(unit) {
     }
 }
 
-/**
- * Gets user's preferred temperature unit
- * 
- * @returns {string} 'metric' or 'imperial'
- */
 export function getPreferredUnit() {
     try {
         const unit = localStorage.getItem(STORAGE_KEYS.PREFERRED_UNIT);
@@ -185,11 +132,6 @@ export function getPreferredUnit() {
     }
 }
 
-/**
- * Saves theme preference
- * 
- * @param {string} theme - 'light' or 'dark'
- */
 export function saveThemePreference(theme) {
     if (theme !== 'light' && theme !== 'dark') {
         console.error('Invalid theme:', theme);
@@ -204,11 +146,6 @@ export function saveThemePreference(theme) {
     }
 }
 
-/**
- * Gets theme preference
- * 
- * @returns {string} 'light' or 'dark'
- */
 export function getThemePreference() {
     try {
         const theme = localStorage.getItem(STORAGE_KEYS.THEME);
@@ -217,18 +154,13 @@ export function getThemePreference() {
             return theme;
         }
         
-        return 'light'; // Default theme
+        return 'light';
     } catch (error) {
         console.error('Error reading theme preference:', error);
         return 'light';
     }
 }
 
-/**
- * Checks if localStorage is available
- * 
- * @returns {boolean} True if localStorage is supported
- */
 export function isStorageAvailable() {
     try {
         const test = '__storage_test__';

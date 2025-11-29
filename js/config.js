@@ -4,7 +4,7 @@
  */
 
 // OpenWeatherMap API Configuration
-export const API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your actual API key from openweathermap.org
+export const API_KEY = 'ffe83d710eb450d9c471aa554dccbf1d';
 export const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 export const GEO_URL = 'https://api.openweathermap.org/geo/1.0';
 

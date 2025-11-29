@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Modern weather dashboard with current conditions and 5-day forecast">
+    <title>Weather Dashboard - Real-time Weather Information</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans antialiased">
+    
+    <div class="min-h-screen flex flex-col lg:grid lg:grid-cols-[320px_1fr] lg:grid-rows-[auto_1fr]">
+        
+        <header class="bg-slate-800 border-b border-slate-700 lg:col-span-2 sticky top-0 z-50 shadow-lg">
+            <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <i data-lucide="cloud-sun" class="w-8 h-8 text-blue-400"></i>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+                        Weather Dashboard
+                    </h1>
+                </div>
+                
+                <div class="flex items-center gap-2 bg-slate-700 rounded-lg p-1">
+                    <button 
+                        id="celsius-btn" 
+                        class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 bg-blue-500 text-white"
+                        aria-label="Switch to Celsius"
+                    >
+                        °C
+                    </button>
+                    <button 
+                        id="fahrenheit-btn" 
+                        class="px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 text-slate-300 hover:text-white"
+                        aria-label="Switch to Fahrenheit"
+                    >
+                        °F
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <aside class="bg-slate-800 border-r border-slate-700 lg:row-start-2">
+            <div class="p-6 space-y-6">
+                
+                <div class="space-y-3">
+                    <label for="city-search" class="block text-sm font-medium text-slate-300">
+                        Search Location
+                    </label>
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input 
+                            type="text" 
+                            id="city-search" 
+                            placeholder="Enter city name..."
+                            class="w-full pl-11 pr-4 py-3 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                            autocomplete="off"
+                        >
+                    </div>
+                    <button 
+                        id="search-btn" 
+                        class="w-full py-3 bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                    >
+                        <i data-lucide="map-pin" class="w-5 h-5"></i>
+                        Get Weather
+                    </button>
+                </div>
+                
+                <div class="border-t border-slate-700"></div>
+                
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-sm font-medium text-slate-300 flex items-center gap-2">
+                            <i data-lucide="history" class="w-4 h-4"></i>
+                            Recent Searches
+                        </h2>
+                        <button 
+                            id="clear-history-btn" 
+                            class="text-xs text-slate-400 hover:text-red-400 transition-colors"
+                            aria-label="Clear search history"
+                        >
+                            Clear All
+                        </button>
+                    </div>
+                    
+                    <ul id="search-history" class="space-y-2 max-h-80 overflow-y-auto custom-scrollbar">
+                        <li class="text-center py-8 text-slate-500 text-sm" id="empty-history">
+                            <i data-lucide="inbox" class="w-12 h-12 mx-auto mb-2 opacity-50"></i>
+                            <p>No recent searches</p>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </aside>
+        
+        <main class="lg:row-start-2 p-6 space-y-6 overflow-y-auto">
+            
+            <div id="loading-state" class="hidden">
+                <div class="flex flex-col items-center justify-center py-20 space-y-4">
+                    <div class="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    <p class="text-slate-400">Loading weather data...</p>
+                </div>
+            </div>
+            
+            <div id="error-state" class="hidden">
+                <div class="bg-red-500/10 border border-red-500/50 rounded-lg p-6 flex items-start gap-4">
+                    <i data-lucide="alert-circle" class="w-6 h-6 text-red-400 flex-shrink-0 mt-1"></i>
+                    <div>
+                        <h3 class="font-semibold text-red-400 mb-1">Error Loading Weather</h3>
+                        <p class="text-sm text-slate-300" id="error-message"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="welcome-state" class="flex flex-col items-center justify-center py-20 space-y-6">
+                <i data-lucide="cloud-sun-rain" class="w-24 h-24 text-blue-400 opacity-50"></i>
+                <div class="text-center space-y-2">
+                    <h2 class="text-2xl font-bold text-slate-200">Welcome to Weather Dashboard</h2>
+                    <p class="text-slate-400 max-w-md">
+                        Search for a city to view current weather conditions and a 5-day forecast.
+                    </p>
+                </div>
+            </div>
+            
+            <div id="weather-content" class="hidden space-y-6">
+                
+                <section class="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-2xl p-8 shadow-2xl">
+                    <div class="flex items-start justify-between mb-6">
+                        <div>
+                            <h2 class="text-3xl font-bold mb-2" id="current-city">City Name</h2>
+                            <p class="text-slate-400 flex items-center gap-2">
+                                <i data-lucide="calendar" class="w-4 h-4"></i>
+                                <span id="current-date">Date</span>
+                            </p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-slate-400 text-sm mb-1">Feels like</p>
+                            <p class="text-2xl font-semibold" id="feels-like">--°</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-8">
+                        <div>
+                            <p class="text-7xl font-bold mb-2" id="current-temp">--°</p>
+                            <p class="text-xl text-blue-400 font-medium capitalize" id="current-condition">Loading...</p>
+                        </div>
+                        <div class="text-right">
+                            <i data-lucide="cloud" class="w-24 h-24 text-blue-400" id="current-icon"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t border-slate-700">
+                        <div class="bg-slate-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2 text-slate-400">
+                                <i data-lucide="droplets" class="w-4 h-4"></i>
+                                <span class="text-sm">Humidity</span>
+                            </div>
+                            <p class="text-2xl font-semibold" id="humidity">--%</p>
+                        </div>
+                        
+                        <div class="bg-slate-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2 text-slate-400">
+                                <i data-lucide="wind" class="w-4 h-4"></i>
+                                <span class="text-sm">Wind Speed</span>
+                            </div>
+                            <p class="text-2xl font-semibold" id="wind-speed">-- m/s</p>
+                        </div>
+                        
+                        <div class="bg-slate-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2 text-slate-400">
+                                <i data-lucide="gauge" class="w-4 h-4"></i>
+                                <span class="text-sm">Pressure</span>
+                            </div>
+                            <p class="text-2xl font-semibold" id="pressure">-- hPa</p>
+                        </div>
+                        
+                        <div class="bg-slate-700/50 rounded-lg p-4">
+                            <div class="flex items-center gap-2 mb-2 text-slate-400">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                <span class="text-sm">Visibility</span>
+                            </div>
+                            <p class="text-2xl font-semibold" id="visibility">-- km</p>
+                        </div>
+                    </div>
+                </section>
+                
+                <section>
+                    <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                        <i data-lucide="calendar-days" class="w-5 h-5 text-blue-400"></i>
+                        5-Day Forecast
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4" id="forecast-container">
+                    </div>
+                </section>
+            </div>
+            
+        </main>
+        
+    </div>
+    
+    <script type="module" src="js/app.js"></script>
+    
+</body>
+</html>
